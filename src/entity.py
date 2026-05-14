@@ -1,6 +1,8 @@
 import math
 
 import pygame
+from pygame.math import clamp
+
 from src import constants
 from src.enums import Weapons
 
@@ -13,11 +15,11 @@ class Entity:
         self.vx, self.vy = 0.0, 0.0
         self.radius = 18
         self.angle = 0
-        self.hp = 100
+        self.max_hp = 100
+        self.hp = self.max_hp
         self.is_player = False
         self.arma: Weapons = Weapons.PUGNI
         self.walk_timer = 0
-        self.stamina = 200.0
         self.is_sprinting = False
         self.in_cover = False
         self.cover_wall = None
@@ -29,10 +31,8 @@ class Entity:
             self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2
         )
 
-    def update_physics(self, dt, muri, input_x, input_y, is_sprinting):
-        self.is_sprinting = is_sprinting
-        acc = 1.5 if is_sprinting and self.stamina > 0 else 0.8
-        fric = C.physics.fric
+    def update_physics(self, dt, map_dim, muri, input_x, input_y, is_sprinting, acc=0.8):
+        fric = C.physics.FRIC
 
         if self.in_cover:
             acc = 0.3
@@ -54,7 +54,7 @@ class Entity:
         else:
             self.walk_timer = 0
 
-        self.x += self.vx * dt
+        self.x = clamp(self.x + self.vx * dt, 0, map_dim[0])
         r_x = self.get_rect()
         for m in muri:
             if r_x.colliderect(m.rect):
@@ -64,7 +64,7 @@ class Entity:
                     self.x = m.rect.right + self.radius
                 self.vx = 0
 
-        self.y += self.vy * dt
+        self.y = clamp(self.y + self.vy * dt, 0, map_dim[1])
         r_y = self.get_rect()
         for m in muri:
             if r_y.colliderect(m.rect):

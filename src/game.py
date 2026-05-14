@@ -3,6 +3,7 @@ import random
 import math
 import sys
 
+import fonts as resizable_fonts
 from src import constants
 from src.effects import Proiettile, Blood, Particle
 from src.entity import Entity
@@ -10,13 +11,14 @@ from src.enums import Weapons, AirDrops
 from src.map import Drop, gen_objs
 from src.player import Player
 from src.utils import mostra_testo
+from utils import rand_bool
 
 C = constants.Constants()
 
 # --- SETUP ---
 pygame.init()
 info = pygame.display.Info()
-WIDTH, HEIGHT = int(info.current_w / 4 * 3), int(info.current_h / 4 * 3)
+WIDTH, HEIGHT = info.current_w // 4 * 3, info.current_h // 4 * 3
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 
@@ -35,8 +37,8 @@ class Camera:
         return entity[0] + self.camera.x, entity[1] + self.camera.y
 
     def update(self, target_x, target_y):
-        x = -target_x + int(WIDTH / 2)
-        y = -target_y + int(HEIGHT / 2)
+        x = -target_x + WIDTH // 2
+        y = -target_y + HEIGHT // 2
         x = min(0, max(-(self.width - WIDTH), x))
         y = min(0, max(-(self.height - HEIGHT), y))
         self.camera = pygame.Rect(x, y, self.width, self.height)
@@ -81,22 +83,24 @@ def disegna_menu_radiale(surface, mx, my, inv_armi, arma_attiva):
         col = C.colors.GOLD if is_hover else C.colors.WHITE
         if arma == arma_attiva and not is_hover:
             col = C.colors.GREEN
-        mostra_testo(screen, arma.upper(), C.fonts.wheel, col, tx, ty)
+        mostra_testo(screen, arma.name.upper(), C.fonts.wheel, col, tx, ty)
 
     return inv_armi[selezione] if selezione != -1 else arma_attiva
 
+def sfondo():
+    screen.fill(C.colors.BLACK)
+    # Sfondo griglia tematico
+    for i in range(0, WIDTH, 50):
+        pygame.draw.line(screen, (30, 25, 25), (i, 0), (i, HEIGHT))
+    for i in range(0, HEIGHT, 50):
+        pygame.draw.line(screen, (30, 25, 25), (0, i), (WIDTH, i))
 
 # --- MENU PRINCIPALI ---
 def menu_principale():
     sel = 0
     opzioni = ["INIZIA FUGA", "ESCI"]
     while True:
-        screen.fill(C.colors.BLACK)
-        # Sfondo griglia tematico
-        for i in range(0, WIDTH, 50):
-            pygame.draw.line(screen, (30, 25, 25), (i, 0), (i, HEIGHT))
-        for i in range(0, HEIGHT, 50):
-            pygame.draw.line(screen, (30, 25, 25), (0, i), (WIDTH, i))
+        sfondo()
 
         mostra_testo(
             screen,
@@ -140,7 +144,8 @@ def menu_livelli():
     sel = 0
     livelli = 10
     while True:
-        screen.fill(C.colors.BLACK)
+        sfondo()
+
         mostra_testo(
             screen,
             "MAPPA TATTICA - SCEGLI ZONA",
@@ -207,7 +212,7 @@ def menu_livelli():
 # --- MOTORE GIOCO ---
 # noinspection PyPep8Naming
 def esegui_gioco(n_lvl):
-    metri = 40 + (n_lvl * 20)
+    metri = 40 + (n_lvl * 10)
     WORLD_W = WORLD_H = metri * PIXELS_PER_METER
     camera = Camera(WORLD_W, WORLD_H)
 
@@ -216,10 +221,16 @@ def esegui_gioco(n_lvl):
     munizioni = {Weapons.PISTOLA: 0, Weapons.MITRAGLIETTA: 0}
 
     nemici = []
-    for _ in range(10 + (n_lvl - 1) * 4):
-        n = Entity(
-            random.randint(200, WORLD_W - 200), random.randint(200, WORLD_H - 200)
-        )
+    for _ in range(4 + (n_lvl - 1)):
+        x = random.randint(0, WORLD_W // 2 - C.SPAWN_RADIUS)
+        if rand_bool(): # inverte pos
+            x = WORLD_W - x
+
+        y = random.randint(0, WORLD_H // 2 - C.SPAWN_RADIUS)
+        if rand_bool():
+            y = WORLD_H - y
+
+        n = Entity(x,y)
         n.arma = random.choice([Weapons.PISTOLA, Weapons.MITRAGLIETTA])
         n.last_shot = random.randint(0, 1000)
         nemici.append(n)
@@ -344,7 +355,7 @@ def esegui_gioco(n_lvl):
 
         is_sprinting = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
 
-        giocatore.update_physics(dt, muri, ix, iy, is_sprinting)
+        giocatore.update_physics(dt, (WORLD_W, WORLD_H), muri, ix, iy, is_sprinting)
 
         if not radial_open:
             c_x, c_y = camera.apply((giocatore.x, giocatore.y))
@@ -364,7 +375,7 @@ def esegui_gioco(n_lvl):
                 nx = -math.cos(n.angle)
                 ny = -math.sin(n.angle)
 
-            n.update_physics(dt, muri, nx, ny, is_sprinting=False)
+            n.update_physics(dt, (WORLD_W, WORLD_H), muri, nx, ny, is_sprinting=False)
 
             if dist < 600 and now - getattr(n, "last_shot", 0) > (
                 300 if n.arma == Weapons.MITRAGLIETTA else 1000
@@ -452,7 +463,7 @@ def esegui_gioco(n_lvl):
                 pygame.draw.rect(
                     screen,
                     C.colors.GREEN,
-                    (30, HEIGHT - 120, (giocatore.hp / 100) * 280, 20),
+                    (30, HEIGHT - 120, (giocatore.hp / giocatore.max_hp) * 280, 20),
                     0,
                     5,
                 )
@@ -461,7 +472,7 @@ def esegui_gioco(n_lvl):
             pygame.draw.rect(
                 screen,
                 C.colors.WHITE,
-                (30, HEIGHT - 90, (giocatore.stamina / 200) * 280, 10),
+                (30, HEIGHT - 90, (giocatore.stamina / giocatore.max_stamina) * 280, 10),
                 0,
                 3,
             )
@@ -511,6 +522,39 @@ def esegui_gioco(n_lvl):
             return True  # Vinto
     return None
 
+def screen_vittoria():
+    while True:
+        sfondo()
+
+        rect = screen.get_rect()
+        mostra_testo(screen, "VITTORIA", resizable_fonts.hud(60), C.colors.LIME, rect.centerx, rect.centery)
+        mostra_testo(screen, "Premi Invio per tornare al menu", C.fonts.hud, C.colors.WHITE, rect.centerx, rect.bottom - 40)
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                return -1
+            if e.type == pygame.KEYDOWN:
+                if e.key in [pygame.K_RETURN, pygame.K_ESCAPE]:
+                    return 0
+
+        pygame.display.flip()
+
+def screen_sconfitta():
+    while True:
+        sfondo()
+
+        rect = screen.get_rect()
+        mostra_testo(screen, "SCONFITTA", resizable_fonts.hud(60), C.colors.RED, rect.centerx, rect.centery)
+        mostra_testo(screen, "Premi Invio per tornare al menu", C.fonts.hud, C.colors.WHITE, rect.centerx, rect.bottom - 40)
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                return -1
+            if e.type == pygame.KEYDOWN:
+                if e.key in [pygame.K_RETURN, pygame.K_ESCAPE]:
+                    return 0
+
+        pygame.display.flip()
 
 # --- ESECUZIONE PRINCIPALE ---
 def main():
@@ -525,9 +569,13 @@ def main():
         if esito is None:  # Premuto ESC in game
             break
         elif esito:
-            print(f"Livello {lvl} Completato!")
+            end = screen_vittoria()
+            if end == -1:
+                break
         elif not esito:
-            print(f"Morto al livello {lvl}. Riprova!")
+            end = screen_sconfitta()
+            if end == -1:
+                break
 
     pygame.quit()
     sys.exit()

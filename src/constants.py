@@ -7,9 +7,13 @@ class Constants:
         self.colors = Constants.Colors()
         self.fonts = Constants.Fonts()
 
+    @property
+    def SPAWN_RADIUS(self):
+        return 200
+
     class Physics:
         @property
-        def fric(self):
+        def FRIC(self):
             return 0.82
 
     # --- COLORI KABUL DECADUTA ---💔💔
@@ -53,6 +57,10 @@ class Constants:
         @property
         def DARK_RED(self):
             return 100, 0, 0
+
+        @property
+        def GRAY(self):
+            return 128, 128, 128, 150
 
         @property
         def BLUE(self):

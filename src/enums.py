@@ -5,7 +5,7 @@ from enum import Enum
 class Weapons(Enum):
     PISTOLA = 45
     MITRAGLIETTA = 25
-    PUGNI = 40
+    PUGNI = 30
 
     def to_string(self) -> str:
         if self == Weapons.PISTOLA:
@@ -24,4 +24,3 @@ class AirDrops(Enum):
     def to_string(self) -> str:
         if self == AirDrops.MEDKIT:
             return "Medkit"
-        return ""
