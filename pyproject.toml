@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "black>=26.3.1",
     "pygame==2.6.1",
+    "pyinstaller==6.20.0",
 ]
 
 [tool.black]
