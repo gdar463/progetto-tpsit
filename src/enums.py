@@ -1,6 +1,6 @@
 from enum import Enum
 
-from src import constants
+import constants
 
 C = constants.Constants()
 

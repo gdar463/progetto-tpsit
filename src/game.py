@@ -5,20 +5,20 @@ import sys
 
 import pygame
 
-from src import constants
-from src import fonts as resizable_fonts
-from src.effects import Proiettile, Blood, Particle, Attack
-from src.entity import Entity
-from src.enums import Weapons, AirDrops, Difficulty
-from src.map import Drop, gen_objs
-from src.player import Player
-from src.utils import mostra_testo, rand_bool
+import constants
+import fonts as resizable_fonts
+from effects import Proiettile, Blood, Particle, Attack
+from entity import Entity
+from enums import Weapons, AirDrops, Difficulty
+from map import Drop, gen_objs
+from player import Player
+from utils import mostra_testo, rand_bool
 
 C = constants.Constants()
 
 # --- SETUP ---
 pygame.init()
-icon = pygame.image.load("assets/icon.ico")
+icon = pygame.image.load("../assets/icon.ico")
 if platform.system() == "Windows":
     import ctypes
 
@@ -648,3 +648,6 @@ def main():
     sys.exit()
 
     # efn 💔
+
+if __name__ == '__main__':
+    main()

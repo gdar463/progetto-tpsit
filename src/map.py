@@ -3,10 +3,10 @@ import random
 
 import pygame
 
-from src.effects import Debris
-from src.enums import Weapons, AirDrops
-from src.utils import mostra_testo
-from src import constants
+from effects import Debris
+from enums import Weapons, AirDrops
+from utils import mostra_testo
+import constants
 
 C = constants.Constants()
 

@@ -1,5 +1,5 @@
-from src import entity
-from src import constants
+import entity
+import constants
 
 C = constants.Constants()
 

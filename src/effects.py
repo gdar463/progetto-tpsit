@@ -4,8 +4,8 @@ import random
 
 import pygame
 
-from src.entity import Entity
-from src import constants
+from entity import Entity
+import constants
 
 C = constants.Constants()
 

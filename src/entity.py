@@ -3,8 +3,8 @@ import math
 import pygame
 from pygame.math import clamp
 
-from src import constants
-from src.enums import Weapons
+import constants
+from enums import Weapons
 
 C = constants.Constants()
 
