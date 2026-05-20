@@ -1,25 +1,35 @@
-import pygame
-import random
 import math
+import platform
+import random
 import sys
 
-import fonts as resizable_fonts
+import pygame
+
 from src import constants
-from src.effects import Proiettile, Blood, Particle
+from src import fonts as resizable_fonts
+from src.effects import Proiettile, Blood, Particle, Attack
 from src.entity import Entity
-from src.enums import Weapons, AirDrops
+from src.enums import Weapons, AirDrops, Difficulty
 from src.map import Drop, gen_objs
 from src.player import Player
-from src.utils import mostra_testo
-from utils import rand_bool
+from src.utils import mostra_testo, rand_bool
 
 C = constants.Constants()
 
 # --- SETUP ---
 pygame.init()
+icon = pygame.image.load("assets/icon.ico")
+if platform.system() == "Windows":
+    import ctypes
+
+    myappid = "gdar463.progetto.1.0"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+pygame.display.set_icon(icon)
+pygame.display.set_caption("ASH R6: Fuga da Kabul EFN")
 info = pygame.display.Info()
-WIDTH, HEIGHT = info.current_w // 4 * 3, info.current_h // 4 * 3
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+# WIDTH, HEIGHT = info.current_w // 4 * 3, info.current_h // 4 * 3
+WIDTH, HEIGHT = info.current_w, info.current_h
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 
 PIXELS_PER_METER = 40
@@ -87,6 +97,7 @@ def disegna_menu_radiale(surface, mx, my, inv_armi, arma_attiva):
 
     return inv_armi[selezione] if selezione != -1 else arma_attiva
 
+
 def sfondo():
     screen.fill(C.colors.BLACK)
     # Sfondo griglia tematico
@@ -94,6 +105,7 @@ def sfondo():
         pygame.draw.line(screen, (30, 25, 25), (i, 0), (i, HEIGHT))
     for i in range(0, HEIGHT, 50):
         pygame.draw.line(screen, (30, 25, 25), (0, i), (WIDTH, i))
+
 
 # --- MENU PRINCIPALI ---
 def menu_principale():
@@ -112,7 +124,7 @@ def menu_principale():
         )
         mostra_testo(
             screen,
-            "Premi SHIFT per Correre, Q per Ripararti, TAB per le Armi",
+            "Premi SHIFT per Correre, CTRL per Ripararti, TAB per le Armi",
             C.fonts.hud,
             C.colors.GOLD,
             WIDTH // 2,
@@ -142,7 +154,18 @@ def menu_principale():
 
 def menu_livelli():
     sel = 0
-    livelli = 10
+    livelli = [
+        Difficulty.FACILE,
+        Difficulty.FACILE,
+        Difficulty.FACILE,
+        Difficulty.FACILE,
+        Difficulty.MEDIO,
+        Difficulty.MEDIO,
+        Difficulty.MEDIO,
+        Difficulty.ESTREMO,
+        Difficulty.ESTREMO,
+        Difficulty.ESTREMO,
+    ]
     while True:
         sfondo()
 
@@ -155,17 +178,9 @@ def menu_livelli():
             80,
         )
 
-        for i in range(livelli):
+        for i, l in enumerate(livelli):
             x, y = WIDTH // 2 - 450 + (i % 5) * 220, 250 + (i // 5) * 200
-            diff = (
-                ("Facile", C.colors.LIME, C.colors.GREEN)
-                if i < 3
-                else (
-                    ("Medio", C.colors.YELLOW, C.colors.ORANGE)
-                    if i < 7
-                    else ("Estremo", C.colors.RED, C.colors.DARK_RED)
-                )
-            )
+            diff = l.for_menu()
 
             rect = pygame.Rect(x - 100, y - 80, 200, 160)
             pygame.draw.rect(
@@ -175,7 +190,7 @@ def menu_livelli():
 
             mostra_testo(
                 screen,
-                f"LIVELLO {i+1}",
+                f"LIVELLO {i + 1}",
                 C.fonts.menu,
                 C.colors.WHITE if i != sel else C.colors.BLACK,
                 x,
@@ -193,44 +208,45 @@ def menu_livelli():
         pygame.display.flip()
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
-                return -1
+                return -1, None
             if e.type == pygame.KEYDOWN:
                 if e.key in [pygame.K_RIGHT, pygame.K_d]:
-                    sel = (sel + 1) % livelli
+                    sel = (sel + 1) % len(livelli)
                 if e.key in [pygame.K_LEFT, pygame.K_a]:
-                    sel = (sel - 1) % livelli
+                    sel = (sel - 1) % len(livelli)
                 if e.key in [pygame.K_DOWN, pygame.K_s] and sel < 5:
                     sel += 5
                 if e.key in [pygame.K_UP, pygame.K_w] and sel >= 5:
                     sel -= 5
                 if e.key == pygame.K_RETURN:
-                    return sel + 1
+                    return sel + 1, livelli[sel]
                 if e.key == pygame.K_ESCAPE:
-                    return -1
+                    return -1, None
 
 
 # --- MOTORE GIOCO ---
 # noinspection PyPep8Naming
-def esegui_gioco(n_lvl):
-    metri = 40 + (n_lvl * 10)
+def esegui_gioco(n_lvl, diff: Difficulty):
+    metri = 50
     WORLD_W = WORLD_H = metri * PIXELS_PER_METER
     camera = Camera(WORLD_W, WORLD_H)
 
     giocatore = Player(WORLD_W // 2, WORLD_H // 2)
-    inv: list[Weapons] = [Weapons.PUGNI]
-    munizioni = {Weapons.PISTOLA: 0, Weapons.MITRAGLIETTA: 0}
+    inv: list[Weapons] = [Weapons.PUGNI, Weapons.PISTOLA, Weapons.MITRAGLIETTA]
+    munizioni = {Weapons.PISTOLA: 1000, Weapons.MITRAGLIETTA: 1000}
 
     nemici = []
-    for _ in range(4 + (n_lvl - 1)):
+    n_nemici = diff.value[0] + (diff.value[1] - n_lvl) * diff.value[2]
+    for _ in range(n_nemici):
         x = random.randint(0, WORLD_W // 2 - C.SPAWN_RADIUS)
-        if rand_bool(): # inverte pos
+        if rand_bool():  # inverte pos
             x = WORLD_W - x
 
         y = random.randint(0, WORLD_H // 2 - C.SPAWN_RADIUS)
         if rand_bool():
             y = WORLD_H - y
 
-        n = Entity(x,y)
+        n = Entity(x, y)
         n.arma = random.choice([Weapons.PISTOLA, Weapons.MITRAGLIETTA])
         n.last_shot = random.randint(0, 1000)
         nemici.append(n)
@@ -238,6 +254,7 @@ def esegui_gioco(n_lvl):
     proiettili: list[Proiettile] = []
     airdrops: list[Drop] = []
     particelle: list[Particle] = []
+    particelle_dopo: list[Particle] = []
     last_drop = pygame.time.get_ticks()
     last_shot_p = 0
     radial_open = False
@@ -250,10 +267,11 @@ def esegui_gioco(n_lvl):
         m_x, m_y = pygame.mouse.get_pos()
         m_btn = pygame.mouse.get_pressed()
         keys = pygame.key.get_pressed()
+        mods = pygame.key.get_mods()
 
         dt = clock.tick(60) / 16.66
         if radial_open:
-            dt *= 0.05
+            dt *= 0.01
         elif m_btn[2] and giocatore.arma != Weapons.PUGNI:
             dt *= 0.4
 
@@ -266,7 +284,9 @@ def esegui_gioco(n_lvl):
                 if e.key == pygame.K_TAB:
                     radial_open = True
 
-                if e.key == pygame.K_q:
+                if e.key in [pygame.K_LCTRL, pygame.K_RCTRL] or (
+                    mods & pygame.KMOD_META and not mods & pygame.KMOD_ALT
+                ):
                     if giocatore.in_cover:
                         giocatore.in_cover = False
                         giocatore.cover_wall = None
@@ -337,10 +357,11 @@ def esegui_gioco(n_lvl):
         if giocatore.punch_ext > 0:
             if int(giocatore.punch_ext) == 8:
                 for n in nemici:
-                    if math.hypot(giocatore.x - n.x, giocatore.y - n.y) < 60:
+                    if math.hypot(giocatore.x - n.x, giocatore.y - n.y) < 80:
                         n.hp -= giocatore.arma.value
                         for _ in range(5):
                             particelle.append(Blood(n.x, n.y))
+                        particelle_dopo.append(Attack(n))
             giocatore.punch_ext -= 1 * dt
 
         ix, iy = 0, 0
@@ -388,9 +409,11 @@ def esegui_gioco(n_lvl):
             if n.hp <= 0:
                 nemici.remove(n)
 
+        if len(airdrops) >= 2:
+            last_drop += 5000
         if now - last_drop > 15000:
-            dx = max(100, min(WORLD_W - 100, giocatore.x + random.randint(-250, 250)))
-            dy = max(100, min(WORLD_H - 100, giocatore.y + random.randint(-250, 250)))
+            dx = max(100, min(WORLD_W - 100, giocatore.x + random.randint(-300, 300)))
+            dy = max(100, min(WORLD_H - 100, giocatore.y + random.randint(-300, 300)))
             airdrops.append(Drop(dx, dy, now))
             last_drop = now
 
@@ -402,10 +425,11 @@ def esegui_gioco(n_lvl):
 
             if b.owner == "p":
                 for n in nemici:
-                    if math.hypot(b.x - n.x, b.y - n.y) < n.radius:
+                    if math.hypot(b.x - n.x, b.y - n.y) < (n.radius + 5):
                         n.hp -= giocatore.arma.value
                         for _ in range(8):
                             particelle.append(Blood(n.x, n.y))
+                        particelle_dopo.append(Attack(n))
                         proiettili.remove(b)
                         break
             else:
@@ -426,6 +450,10 @@ def esegui_gioco(n_lvl):
             p.update(dt)
             if p.timer <= 0:
                 particelle.remove(p)
+        for p in particelle_dopo:
+            p.update(dt)
+            if p.timer <= 0:
+                particelle_dopo.remove(p)
 
         screen.fill(C.colors.SAND_DUST)
 
@@ -452,47 +480,55 @@ def esegui_gioco(n_lvl):
 
         giocatore.draw_character(screen, camera, m_btn[2])
 
+        for p in particelle_dopo:
+            p.draw(screen, camera)
+
         if radial_open:
             giocatore.arma = disegna_menu_radiale(screen, m_x, m_y, inv, giocatore.arma)
 
         if not radial_open:
-            pygame.draw.rect(screen, C.colors.BLACK, (20, HEIGHT - 140, 300, 120), 0, 8)
+            #                                                           140, 300, 120
+            pygame.draw.rect(screen, C.colors.BLACK, (20, HEIGHT - 175, 400, 155), 0, 8)
 
-            pygame.draw.rect(screen, C.colors.RED, (30, HEIGHT - 120, 280, 20), 0, 5)
+            pygame.draw.rect(screen, C.colors.RED, (30, HEIGHT - 160, 380, 30), 0, 5)
             if giocatore.hp > 0:
                 pygame.draw.rect(
                     screen,
                     C.colors.GREEN,
-                    (30, HEIGHT - 120, (giocatore.hp / giocatore.max_hp) * 280, 20),
+                    (30, HEIGHT - 160, (giocatore.hp / giocatore.max_hp) * 380, 30),
                     0,
                     5,
                 )
 
-            pygame.draw.rect(screen, (50, 50, 50), (30, HEIGHT - 90, 280, 10), 0, 3)
+            pygame.draw.rect(screen, (50, 50, 50), (30, HEIGHT - 125, 380, 10), 0, 3)
             pygame.draw.rect(
                 screen,
                 C.colors.WHITE,
-                (30, HEIGHT - 90, (giocatore.stamina / giocatore.max_stamina) * 280, 10),
+                (
+                    30,
+                    HEIGHT - 125,
+                    (giocatore.stamina / giocatore.max_stamina) * 380,
+                    10,
+                ),
                 0,
                 3,
             )
-
             mostra_testo(
                 screen,
                 f"ARMA: {giocatore.arma.name}",
-                C.fonts.hud,
+                resizable_fonts.hud(30),
                 C.colors.GOLD,
-                170,
-                HEIGHT - 60,
+                225,
+                HEIGHT - 90,
             )
             if giocatore.arma != Weapons.PUGNI:
                 mostra_testo(
                     screen,
                     f"AMMO: {munizioni[giocatore.arma]}",
-                    C.fonts.hud,
+                    resizable_fonts.hud(30),
                     C.colors.WHITE,
-                    170,
-                    HEIGHT - 40,
+                    225,
+                    HEIGHT - 55,
                 )
 
             if giocatore.in_cover:
@@ -508,7 +544,7 @@ def esegui_gioco(n_lvl):
             mostra_testo(
                 screen,
                 f"NEMICI: {len(nemici)}",
-                C.fonts.hud,
+                resizable_fonts.hud(40),
                 C.colors.RED,
                 WIDTH // 2,
                 40,
@@ -522,13 +558,28 @@ def esegui_gioco(n_lvl):
             return True  # Vinto
     return None
 
+
 def screen_vittoria():
     while True:
         sfondo()
 
         rect = screen.get_rect()
-        mostra_testo(screen, "VITTORIA", resizable_fonts.hud(60), C.colors.LIME, rect.centerx, rect.centery)
-        mostra_testo(screen, "Premi Invio per tornare al menu", C.fonts.hud, C.colors.WHITE, rect.centerx, rect.bottom - 40)
+        mostra_testo(
+            screen,
+            "VITTORIA",
+            resizable_fonts.hud(60),
+            C.colors.LIME,
+            rect.centerx,
+            rect.centery,
+        )
+        mostra_testo(
+            screen,
+            "Premi Invio per tornare al menu",
+            C.fonts.hud,
+            C.colors.WHITE,
+            rect.centerx,
+            rect.bottom - 40,
+        )
 
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
@@ -538,14 +589,29 @@ def screen_vittoria():
                     return 0
 
         pygame.display.flip()
+
 
 def screen_sconfitta():
     while True:
         sfondo()
 
         rect = screen.get_rect()
-        mostra_testo(screen, "SCONFITTA", resizable_fonts.hud(60), C.colors.RED, rect.centerx, rect.centery)
-        mostra_testo(screen, "Premi Invio per tornare al menu", C.fonts.hud, C.colors.WHITE, rect.centerx, rect.bottom - 40)
+        mostra_testo(
+            screen,
+            "SCONFITTA",
+            resizable_fonts.hud(60),
+            C.colors.RED,
+            rect.centerx,
+            rect.centery,
+        )
+        mostra_testo(
+            screen,
+            "Premi Invio per tornare al menu",
+            C.fonts.hud,
+            C.colors.WHITE,
+            rect.centerx,
+            rect.bottom - 40,
+        )
 
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
@@ -556,16 +622,17 @@ def screen_sconfitta():
 
         pygame.display.flip()
 
+
 # --- ESECUZIONE PRINCIPALE ---
 def main():
     scelta_menu = menu_principale()
 
     while scelta_menu is not None and scelta_menu != 1:
-        lvl = menu_livelli()
+        lvl, diff = menu_livelli()
         if lvl == -1:  # Premuto ESC per tornare indietro
             break
 
-        esito = esegui_gioco(lvl)
+        esito = esegui_gioco(lvl, diff)
         if esito is None:  # Premuto ESC in game
             break
         elif esito:

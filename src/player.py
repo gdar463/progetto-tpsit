@@ -17,7 +17,9 @@ class Player(entity.Entity):
         self.last_hit = 0.0
         self.regen_after_hit = 300.0  # in frames
 
-    def update_physics(self, dt, map_dim, muri, input_x, input_y, is_sprinting, acc = 0.8):
+    def update_physics(
+        self, dt, map_dim, muri, input_x, input_y, is_sprinting, acc=0.8
+    ):
         self.is_sprinting = is_sprinting
         acc = 1.5 if is_sprinting and self.stamina > 0 else acc
 

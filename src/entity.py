@@ -31,7 +31,9 @@ class Entity:
             self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2
         )
 
-    def update_physics(self, dt, map_dim, muri, input_x, input_y, is_sprinting, acc=0.8):
+    def update_physics(
+        self, dt, map_dim, muri, input_x, input_y, is_sprinting, acc=0.8
+    ):
         fric = C.physics.FRIC
 
         if self.in_cover:
@@ -100,23 +102,17 @@ class Entity:
         pygame.draw.rect(surf, color, corpo_rect, 0, 6)
 
         if self.arma in [Weapons.PISTOLA, Weapons.MITRAGLIETTA]:
-            if is_aiming or not self.is_player:
-                pygame.draw.rect(surf, color, (cent + 5, cent - 16, 25, 8), 0, 4)
-                pygame.draw.rect(
-                    surf,
-                    (40, 40, 40),
-                    (
-                        cent + 20,
-                        cent - 18,
-                        25 if self.arma == Weapons.MITRAGLIETTA else 15,
-                        10,
-                    ),
-                )
-            else:
-                pygame.draw.rect(surf, color, (cent, cent - 16, 20, 8), 0, 4)
-                pygame.draw.rect(
-                    surf, color, (cent - 10 - swing, cent + 10, 20, 8), 0, 4
-                )
+            pygame.draw.rect(surf, color, (cent + 5, cent - 16, 25, 8), 0, 4)
+            pygame.draw.rect(
+                surf,
+                (40, 40, 40),
+                (
+                    cent + 20,
+                    cent - 18,
+                    25 if self.arma == Weapons.MITRAGLIETTA else 15,
+                    10,
+                ),
+            )
         else:
             dx_p = self.punch_ext if self.punch_ext > 0 else -swing
             sx_p = swing

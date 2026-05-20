@@ -9,7 +9,7 @@ class Constants:
 
     @property
     def SPAWN_RADIUS(self):
-        return 200
+        return 50
 
     class Physics:
         @property
@@ -59,8 +59,8 @@ class Constants:
             return 100, 0, 0
 
         @property
-        def GRAY(self):
-            return 128, 128, 128, 150
+        def ATTACK(self):
+            return 240, 240, 240, 150
 
         @property
         def BLUE(self):

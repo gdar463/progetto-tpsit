@@ -4,8 +4,7 @@ import random
 
 import pygame
 
-from entity import Entity
-from game import Camera
+from src.entity import Entity
 from src import constants
 
 C = constants.Constants()
@@ -63,19 +62,31 @@ class Blood(Particle):
                 (cx, cy, random.randint(2, 5), random.randint(2, 5)),
             )
 
+
 class Attack(Particle):
     def __init__(self, e: Entity):
         self.x, self.y = e.x, e.y
         self.timer = random.randint(20, 60)
 
     def update(self, dt):
-        self.timer -= 1 * dt
+        self.timer -= 2 * dt
 
     def draw(self, surface, camera):
         if self.timer > 0:
             cx, cy = camera.apply((self.x, self.y))
-            pygame.draw.line(surface, C.colors.GRAY, (cx - 5, cy + 5), (cx + 5, cy - 5))
-            pygame.draw.line(surface, C.colors.GRAY, (cx + 5, cy + 5), (cx - 5, cy - 5))
+            pygame.draw.line(
+                surface, C.colors.ATTACK, (cx - 13, cy + 13), (cx - 5, cy + 5), 3
+            )
+            pygame.draw.line(
+                surface, C.colors.ATTACK, (cx - 13, cy - 13), (cx - 5, cy - 5), 3
+            )
+            pygame.draw.line(
+                surface, C.colors.ATTACK, (cx + 5, cy - 5), (cx + 13, cy - 13), 3
+            )
+            pygame.draw.line(
+                surface, C.colors.ATTACK, (cx + 5, cy + 5), (cx + 13, cy + 13), 3
+            )
+
 
 class Proiettile:
     def __init__(self, x, y, angle, owner):
